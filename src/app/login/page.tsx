@@ -10,8 +10,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Chrome } from 'lucide-react';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 
 const loginSchema = z.object({
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { signInWithGoogle } = useAuth();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -37,9 +39,8 @@ export default function LoginPage() {
   
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithGoogle();
       toast({ title: "Signed in successfully!" });
       router.push('/');
     } catch (error: any) {
