@@ -9,6 +9,7 @@ import { ProductProvider } from '@/lib/ProductContext';
 export const metadata: Metadata = {
   title: 'MarketShare',
   description: 'Resale and renting of all kinds of products.',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
