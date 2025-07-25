@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, use } from 'react';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { products } from '@/lib/mock-data';
@@ -13,8 +13,9 @@ import { Star, MessageCircle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
-export default function ListingDetailPage({ params }: { params: { id: string } }) {
-  const product = products.find((p) => p.id === params.id);
+export default function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const product = products.find((p) => p.id === id);
   const [listingType, setListingType] = useState(product?.type || 'sale');
 
   if (!product) {
