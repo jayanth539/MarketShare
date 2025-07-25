@@ -1,17 +1,23 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Search, X } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
-import { products as allProducts, categories } from '@/lib/mock-data';
+import { categories } from '@/lib/mock-data';
 import type { Product } from '@/lib/mock-data';
+import { useProducts } from '@/lib/ProductContext';
 
 export default function Home() {
+  const { products: allProducts } = useProducts();
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('all');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>(allProducts);
+
+  useEffect(() => {
+    setFilteredProducts(allProducts);
+  }, [allProducts]);
 
   const handleSearch = () => {
     let newFilteredProducts = allProducts;

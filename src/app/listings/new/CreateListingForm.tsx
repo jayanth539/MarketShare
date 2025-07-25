@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useRouter } from 'next/navigation';
 import { generateListingDetails } from '@/ai/flows/generate-listing-details';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { categories } from '@/lib/mock-data';
+import { useProducts } from '@/lib/ProductContext';
+import type { Product } from '@/lib/mock-data';
 
 const listingSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters.'),
@@ -34,6 +37,8 @@ export default function CreateListingForm() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const { toast } = useToast();
+  const { addProduct } = useProducts();
+  const router = useRouter();
 
   const form = useForm<ListingFormValues>({
     resolver: zodResolver(listingSchema),
@@ -93,14 +98,27 @@ export default function CreateListingForm() {
   };
 
   function onSubmit(data: ListingFormValues) {
-    console.log('Form submitted:', data);
+    const newProduct: Product = {
+      id: new Date().getTime().toString(),
+      title: data.title,
+      description: data.description,
+      price: data.price,
+      imageUrl: photoPreview!,
+      category: data.category as Product['category'],
+      type: data.type,
+      condition: 'new', // Assuming new for simplicity
+      seller: { name: 'Alex Doe', avatar: 'https://placehold.co/100x100.png' }, // Mock seller
+      reviews: [],
+    };
+
+    addProduct(newProduct);
+    
     toast({
       title: 'Listing Created!',
       description: 'Your item is now live on the marketplace.',
     });
-    form.reset();
-    setPhotoPreview(null);
-    setPhotoDataUri(null);
+    
+    router.push('/');
   }
 
   return (

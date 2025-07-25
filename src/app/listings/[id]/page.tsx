@@ -2,7 +2,7 @@
 import { useState, use } from 'react';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { products } from '@/lib/mock-data';
+import { useProducts } from '@/lib/ProductContext';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 
 export default function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { products } = useProducts();
   const product = products.find((p) => p.id === id);
   const [listingType, setListingType] = useState(product?.type || 'sale');
 
