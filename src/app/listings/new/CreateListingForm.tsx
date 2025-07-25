@@ -108,15 +108,20 @@ export default function CreateListingForm() {
       return;
     }
     
+    console.log('Starting listing creation process...');
     setIsSubmitting(true);
-    try {
-        // 1. Upload image to Firebase Storage
-        const photoFile = data.photo;
-        const storageRef = ref(storage, `listings/${user.uid}/${Date.now()}_${photoFile.name}`);
-        await uploadBytes(storageRef, photoFile);
-        const imageUrl = await getDownloadURL(storageRef);
 
-        // 2. Create product document in Firestore
+    try {
+        const photoFile = data.photo;
+        console.log('1. Preparing to upload photo:', photoFile.name);
+        const storageRef = ref(storage, `listings/${user.uid}/${Date.now()}_${photoFile.name}`);
+        
+        await uploadBytes(storageRef, photoFile);
+        console.log('2. Photo uploaded successfully.');
+
+        const imageUrl = await getDownloadURL(storageRef);
+        console.log('3. Got download URL:', imageUrl);
+
         const newProduct: Omit<Product, 'id' | 'reviews'> = {
             title: data.title,
             description: data.description,
@@ -133,18 +138,27 @@ export default function CreateListingForm() {
             createdAt: serverTimestamp(),
         };
 
+        console.log('4. Preparing to create product document in Firestore with data:', newProduct);
         const docRef = await addDoc(collection(db, 'products'), newProduct);
+        console.log('5. Product document created successfully with ID:', docRef.id);
 
         toast({
             title: 'Listing Created!',
             description: 'Your item is now live on the marketplace.',
         });
         
+        console.log('6. Navigating to new listing page.');
         router.push(`/listings/${docRef.id}`);
-    } catch (error) {
+
+    } catch (error: any) {
         console.error("Error creating listing: ", error);
-        toast({ title: 'Error creating listing', description: 'Please try again.', variant: 'destructive' });
+        toast({ 
+          title: 'Error creating listing', 
+          description: error.message || 'An unknown error occurred. Please check the console.', 
+          variant: 'destructive' 
+        });
     } finally {
+        console.log('7. Finalizing listing creation process.');
         setIsSubmitting(false);
     }
   }
@@ -321,3 +335,5 @@ export default function CreateListingForm() {
     </Card>
   );
 }
+
+    
