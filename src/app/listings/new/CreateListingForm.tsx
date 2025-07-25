@@ -17,9 +17,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles } from 'lucide-react';
 import Image from 'next/image';
-import { categories } from '@/lib/mock-data';
-import { useProducts } from '@/lib/ProductContext';
-import type { Product } from '@/lib/mock-data';
+import { categories } from '@/lib/types';
+import { useAuth } from '@/hooks/useAuth';
+import type { Product } from '@/lib/types';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const listingSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters.'),
@@ -27,17 +30,19 @@ const listingSchema = z.object({
   price: z.coerce.number().min(0.01, 'Price must be positive.'),
   category: z.string({ required_error: 'Please select a category.' }),
   type: z.enum(['sale', 'rent'], { required_error: 'You must select a listing type.' }),
-  photo: z.any().refine(file => file instanceof File, 'Photo is required.'),
+  condition: z.enum(['new', 'used'], { required_error: 'Please select a condition.'}),
+  photo: z.instanceof(File).refine(file => file.size > 0, 'Photo is required.'),
 });
 
 type ListingFormValues = z.infer<typeof listingSchema>;
 
 export default function CreateListingForm() {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const { toast } = useToast();
-  const { addProduct } = useProducts();
+  const { user } = useAuth();
   const router = useRouter();
 
   const form = useForm<ListingFormValues>({
@@ -48,7 +53,7 @@ export default function CreateListingForm() {
       price: undefined,
       category: undefined,
       type: 'sale',
-      photo: undefined,
+      condition: 'new',
     },
   });
 
@@ -97,28 +102,51 @@ export default function CreateListingForm() {
     }
   };
 
-  function onSubmit(data: ListingFormValues) {
-    const newProduct: Product = {
-      id: new Date().getTime().toString(),
-      title: data.title,
-      description: data.description,
-      price: data.price,
-      imageUrl: photoPreview!,
-      category: data.category as Product['category'],
-      type: data.type,
-      condition: 'new', // Assuming new for simplicity
-      seller: { name: 'Alex Doe', avatar: 'https://placehold.co/100x100.png' }, // Mock seller
-      reviews: [],
-    };
+  async function onSubmit(data: ListingFormValues) {
+    if (!user) {
+      toast({ title: 'You must be logged in to create a listing.', variant: 'destructive' });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+        // 1. Upload image to Firebase Storage
+        const photoFile = data.photo;
+        const storageRef = ref(storage, `listings/${user.uid}/${Date.now()}_${photoFile.name}`);
+        await uploadBytes(storageRef, photoFile);
+        const imageUrl = await getDownloadURL(storageRef);
 
-    addProduct(newProduct);
-    
-    toast({
-      title: 'Listing Created!',
-      description: 'Your item is now live on the marketplace.',
-    });
-    
-    router.push('/');
+        // 2. Create product document in Firestore
+        const newProduct: Omit<Product, 'id' | 'reviews'> = {
+            title: data.title,
+            description: data.description,
+            price: data.price,
+            imageUrl: imageUrl,
+            category: data.category as Product['category'],
+            type: data.type,
+            condition: data.condition,
+            seller: { 
+                id: user.uid,
+                name: user.displayName || 'Anonymous', 
+                avatar: user.photoURL || 'https://placehold.co/100x100.png' 
+            },
+            createdAt: serverTimestamp(),
+        };
+
+        await addDoc(collection(db, 'products'), newProduct);
+
+        toast({
+            title: 'Listing Created!',
+            description: 'Your item is now live on the marketplace.',
+        });
+        
+        router.push('/');
+    } catch (error) {
+        console.error("Error creating listing: ", error);
+        toast({ title: 'Error creating listing', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
@@ -207,7 +235,7 @@ export default function CreateListingForm() {
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <FormField
+               <FormField
                 control={form.control}
                 name="price"
                 render={({ field }) => (
@@ -220,8 +248,39 @@ export default function CreateListingForm() {
                   </FormItem>
                 )}
               />
-
               <FormField
+                control={form.control}
+                name="condition"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Condition</FormLabel>
+                     <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="flex items-center space-x-4 pt-2"
+                      >
+                        <FormItem className="flex items-center space-x-2">
+                          <FormControl>
+                            <RadioGroupItem value="new" />
+                          </FormControl>
+                          <FormLabel className="font-normal">New</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2">
+                          <FormControl>
+                            <RadioGroupItem value="used" />
+                          </FormControl>
+                          <FormLabel className="font-normal">Used</FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+             <FormField
                 control={form.control}
                 name="type"
                 render={({ field }) => (
@@ -251,9 +310,11 @@ export default function CreateListingForm() {
                   </FormItem>
                 )}
               />
-            </div>
             
-            <Button type="submit" className="w-full" size="lg">Create Listing</Button>
+            <Button type="submit" disabled={isSubmitting} className="w-full" size="lg">
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Listing
+            </Button>
           </form>
         </Form>
       </CardContent>

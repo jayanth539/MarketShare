@@ -5,19 +5,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Search, X } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
-import { categories } from '@/lib/mock-data';
-import type { Product } from '@/lib/mock-data';
-import { useProducts } from '@/lib/ProductContext';
+import { categories } from '@/lib/types';
+import type { Product } from '@/lib/types';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
-  const { products: allProducts } = useProducts();
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('all');
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>(allProducts);
+  const [condition, setCondition] = useState('all');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setFilteredProducts(allProducts);
-  }, [allProducts]);
+    const fetchProducts = async () => {
+      setLoading(true);
+      const productsCollection = collection(db, 'products');
+      const productSnapshot = await getDocs(productsCollection);
+      const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      setAllProducts(productList);
+      setFilteredProducts(productList);
+      setLoading(false);
+    };
+    fetchProducts();
+  }, []);
 
   const handleSearch = () => {
     let newFilteredProducts = allProducts;
@@ -32,12 +47,27 @@ export default function Home() {
       newFilteredProducts = newFilteredProducts.filter(p => p.category === category);
     }
 
+    if (condition !== 'all') {
+        newFilteredProducts = newFilteredProducts.filter(p => p.condition === condition);
+    }
+
+    if (minPrice) {
+        newFilteredProducts = newFilteredProducts.filter(p => p.price >= parseFloat(minPrice));
+    }
+
+    if (maxPrice) {
+        newFilteredProducts = newFilteredProducts.filter(p => p.price <= parseFloat(maxPrice));
+    }
+
     setFilteredProducts(newFilteredProducts);
   };
   
   const clearFilters = () => {
     setSearchTerm('');
     setCategory('all');
+    setCondition('all');
+    setMinPrice('');
+    setMaxPrice('');
     setFilteredProducts(allProducts);
   }
 
@@ -49,7 +79,7 @@ export default function Home() {
           <p className="text-lg text-muted-foreground mt-2">Find what you need, or rent what you don't.</p>
         </div>
 
-        <div className="bg-card p-6 rounded-lg shadow-md mb-12 flex flex-col md:flex-row gap-4 items-center">
+        <div className="bg-card p-6 rounded-lg shadow-md mb-12 flex flex-col md:flex-row flex-wrap gap-4 items-center">
           <div className="relative w-full md:flex-grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
@@ -62,8 +92,8 @@ export default function Home() {
             />
           </div>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue placeholder="Select Category" />
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
@@ -74,6 +104,32 @@ export default function Home() {
               ))}
             </SelectContent>
           </Select>
+           <Select value={condition} onValueChange={setCondition}>
+            <SelectTrigger className="w-full md:w-[120px]">
+              <SelectValue placeholder="Condition" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="new">New</SelectItem>
+              <SelectItem value="used">Used</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex gap-2 w-full md:w-auto">
+            <Input
+              type="number"
+              placeholder="Min Price"
+              className="w-full"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+            />
+            <Input
+              type="number"
+              placeholder="Max Price"
+              className="w-full"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+            />
+          </div>
           <Button onClick={handleSearch} className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-primary/90">
             <Search className="mr-2 h-4 w-4" /> Search
           </Button>
@@ -82,7 +138,20 @@ export default function Home() {
           </Button>
         </div>
 
-        {filteredProducts.length > 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {[...Array(8)].map((_, i) => (
+                <Card key={i}>
+                    <Skeleton className="h-[225px] w-full" />
+                    <CardContent className="p-4 space-y-2">
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-5 w-1/2" />
+                        <Skeleton className="h-4 w-1/4" />
+                    </CardContent>
+                </Card>
+            ))}
+          </div>
+        ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {filteredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
