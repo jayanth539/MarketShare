@@ -13,6 +13,16 @@ const firebaseConfig = {
   appId: "1:820623457084:web:3fc6b7a146f2a01985bc39",
 };
 
+// Dynamically set authDomain on client-side
+if (typeof window !== 'undefined') {
+    const dynamicAuthDomain = `${firebaseConfig.projectId}.firebaseapp.com`;
+    if (window.location.hostname.includes('localhost') || !window.location.hostname.includes('firebaseapp.com')) {
+        firebaseConfig.authDomain = dynamicAuthDomain;
+    } else {
+        firebaseConfig.authDomain = window.location.hostname;
+    }
+}
+
 
 // Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
