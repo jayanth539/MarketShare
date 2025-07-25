@@ -21,10 +21,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-if (typeof window !== 'undefined') {
-    if (window.location.hostname.includes('localhost') || window.location.hostname.includes('.dev')) {
-        auth.tenantId = auth.authDomain;
-    }
+if (typeof window !== 'undefined' && (window.location.hostname.includes('localhost') || window.location.hostname.includes('.dev'))) {
+  auth.tenantId = auth.config.authDomain;
 }
 
 
