@@ -108,19 +108,15 @@ export default function CreateListingForm() {
       return;
     }
     
-    console.log('Starting listing creation process...');
     setIsSubmitting(true);
 
     try {
         const photoFile = data.photo;
-        console.log('1. Preparing to upload photo:', photoFile.name);
         const storageRef = ref(storage, `listings/${user.uid}/${Date.now()}_${photoFile.name}`);
         
         await uploadBytes(storageRef, photoFile);
-        console.log('2. Photo uploaded successfully.');
 
         const imageUrl = await getDownloadURL(storageRef);
-        console.log('3. Got download URL:', imageUrl);
 
         const newProduct: Omit<Product, 'id' | 'reviews'> = {
             title: data.title,
@@ -138,16 +134,13 @@ export default function CreateListingForm() {
             createdAt: serverTimestamp(),
         };
 
-        console.log('4. Preparing to create product document in Firestore with data:', newProduct);
         const docRef = await addDoc(collection(db, 'products'), newProduct);
-        console.log('5. Product document created successfully with ID:', docRef.id);
 
         toast({
             title: 'Listing Created!',
             description: 'Your item is now live on the marketplace.',
         });
         
-        console.log('6. Navigating to new listing page.');
         router.push(`/listings/${docRef.id}`);
 
     } catch (error: any) {
@@ -158,7 +151,6 @@ export default function CreateListingForm() {
           variant: 'destructive' 
         });
     } finally {
-        console.log('7. Finalizing listing creation process.');
         setIsSubmitting(false);
     }
   }
