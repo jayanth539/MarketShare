@@ -133,14 +133,14 @@ export default function CreateListingForm() {
             createdAt: serverTimestamp(),
         };
 
-        await addDoc(collection(db, 'products'), newProduct);
+        const docRef = await addDoc(collection(db, 'products'), newProduct);
 
         toast({
             title: 'Listing Created!',
             description: 'Your item is now live on the marketplace.',
         });
         
-        router.push('/');
+        router.push(`/listings/${docRef.id}`);
     } catch (error) {
         console.error("Error creating listing: ", error);
         toast({ title: 'Error creating listing', description: 'Please try again.', variant: 'destructive' });
