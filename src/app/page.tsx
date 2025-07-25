@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import type { Product } from '@/lib/types';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function Home() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
