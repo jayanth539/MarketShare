@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -37,7 +38,12 @@ export default function CreateListingForm() {
   const form = useForm<ListingFormValues>({
     resolver: zodResolver(listingSchema),
     defaultValues: {
+      title: '',
+      description: '',
+      price: undefined,
+      category: undefined,
       type: 'sale',
+      photo: undefined,
     },
   });
 
@@ -127,7 +133,7 @@ export default function CreateListingForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a category" />
@@ -190,7 +196,7 @@ export default function CreateListingForm() {
                   <FormItem>
                     <FormLabel>Price ($)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="e.g., 450.00" {...field} />
+                      <Input type="number" step="0.01" placeholder="e.g., 450.00" {...field} value={field.value ?? ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -206,7 +212,7 @@ export default function CreateListingForm() {
                     <FormControl>
                       <RadioGroup
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                         className="flex items-center space-x-4 pt-2"
                       >
                         <FormItem className="flex items-center space-x-2">
