@@ -24,16 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const handleUser = async (user: User | null) => {
     if (user) {
-      const userRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(userRef);
-      if (!docSnap.exists()) {
-        await setDoc(userRef, {
-          name: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL,
-          createdAt: serverTimestamp(),
-        });
-      }
+      // User profile data is no longer stored in Firestore, just use the auth object
       setUser(user);
     } else {
       setUser(null);
@@ -58,7 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const provider = new GoogleAuthProvider();
     try {
        const userCredential: UserCredential = await signInWithPopup(auth, provider);
-       // The onAuthStateChanged listener will handle user document creation
+       // The onAuthStateChanged listener will handle setting the user state
     } catch (error) {
       console.error('Google Sign-In Failed', error);
       throw error;

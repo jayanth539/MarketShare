@@ -11,10 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Chrome } from 'lucide-react';
 import { createUserWithEmailAndPassword, updateProfile, User } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
@@ -23,17 +22,6 @@ const signupSchema = z.object({
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
-
-async function createUserDocument(user: User) {
-    const userRef = doc(db, 'users', user.uid);
-    await setDoc(userRef, {
-        name: user.displayName,
-        email: user.email,
-        photoURL: user.photoURL,
-        createdAt: serverTimestamp(),
-    });
-}
-
 
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -70,9 +58,6 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       await updateProfile(userCredential.user, { displayName: data.name });
       
-      // Explicitly create user document after profile update
-      await createUserDocument(userCredential.user);
-
       toast({ title: "Account created successfully!" });
       router.push('/');
     } catch (error: any) {

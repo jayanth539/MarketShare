@@ -15,7 +15,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <CardHeader className="p-0">
           <div className="aspect-w-16 aspect-h-9 overflow-hidden">
             <Image
-              src={product.imageUrl}
+              src={product.image_url || 'https://placehold.co/600x400.png'}
               alt={product.title}
               width={600}
               height={400}

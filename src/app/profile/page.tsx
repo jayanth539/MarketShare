@@ -8,8 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { updateProfile } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -31,10 +29,6 @@ export default function ProfilePage() {
             // Update Firebase Auth profile
             await updateProfile(user, { displayName: name });
             
-            // Update Firestore user document
-            const userRef = doc(db, 'users', user.uid);
-            await updateDoc(userRef, { name });
-
             toast({ title: "Profile updated successfully!" });
         } catch (error) {
             console.error("Error updating profile: ", error);

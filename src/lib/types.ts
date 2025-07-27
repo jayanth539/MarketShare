@@ -14,7 +14,7 @@ export type Product = {
   title:string;
   description: string;
   price: number;
-  imageUrl: string;
+  image_url: string | null;
   category: 'Electronics' | 'Vehicles' | 'Furniture' | 'Appliances' | 'Real Estate';
   type: 'sale' | 'rent';
   condition: 'new' | 'used';

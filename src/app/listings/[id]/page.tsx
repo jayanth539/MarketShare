@@ -118,7 +118,7 @@ export default function ListingDetailPage() {
       <div className="grid md:grid-cols-2 gap-12 items-start">
         <div className="bg-card p-4 rounded-lg shadow-md">
           <Image
-            src={product.imageUrl}
+            src={product.image_url!}
             alt={product.title}
             width={800}
             height={600}
