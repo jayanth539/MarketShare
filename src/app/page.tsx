@@ -4,15 +4,17 @@ import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Search, X } from 'lucide-react';
+import { Search, X, ShoppingCart, Repeat, Users } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
 import { categories } from '@/lib/types';
 import type { Product } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/hooks/useAuth';
+import Link from 'next/link';
 
-export default function Home() {
+function Marketplace() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -77,10 +79,9 @@ export default function Home() {
     setMaxPrice('');
     setFilteredProducts(allProducts);
   }
-
+  
   return (
-    <div className="bg-background">
-      <div className="container mx-auto px-4 py-12">
+     <>
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-headline font-bold text-foreground">Explore the Marketplace</h1>
           <p className="text-lg text-muted-foreground mt-2">Find what you need, or rent what you don't.</p>
@@ -170,6 +171,74 @@ export default function Home() {
             <p className="text-muted-foreground mt-2">Try adjusting your search or filters.</p>
           </div>
         )}
+      </>
+  );
+}
+
+function LandingPage() {
+  return (
+    <div className="text-center py-16 md:py-24">
+      <h1 className="text-4xl md:text-6xl font-headline font-bold text-foreground">Welcome to MarketShare</h1>
+      <p className="text-lg md:text-xl text-muted-foreground mt-4 max-w-3xl mx-auto">The modern marketplace for buying, selling, and renting goods with your community. Your next great find is just a click away.</p>
+      <div className="mt-8">
+          <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
+              <Link href="/login">Get Started</Link>
+          </Button>
+      </div>
+
+      <div className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="flex flex-col items-center">
+              <div className="bg-primary/10 p-4 rounded-full">
+                <ShoppingCart className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="mt-4 text-xl font-headline font-semibold">Buy & Sell</h3>
+              <p className="mt-2 text-muted-foreground">Easily list your items or discover a wide range of products from electronics to furniture.</p>
+          </div>
+           <div className="flex flex-col items-center">
+              <div className="bg-primary/10 p-4 rounded-full">
+                <Repeat className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="mt-4 text-xl font-headline font-semibold">Rent Anything</h3>
+              <p className="mt-2 text-muted-foreground">Need something short-term? Rent tools, equipment, or even real estate without the commitment.</p>
+          </div>
+           <div className="flex flex-col items-center">
+              <div className="bg-primary/10 p-4 rounded-full">
+                <Users className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="mt-4 text-xl font-headline font-semibold">Community First</h3>
+              <p className="mt-2 text-muted-foreground">Connect with sellers and buyers in a trusted, community-focused environment.</p>
+          </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Home() {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+     return (
+        <div className="container mx-auto px-4 py-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {[...Array(8)].map((_, i) => (
+                    <Card key={i}>
+                        <Skeleton className="h-[225px] w-full" />
+                        <CardContent className="p-4 space-y-2">
+                            <Skeleton className="h-6 w-3/4" />
+                            <Skeleton className="h-5 w-1/2" />
+                            <Skeleton className="h-4 w-1/4" />
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        </div>
+     );
+  }
+
+  return (
+    <div className="bg-background">
+      <div className="container mx-auto px-4 py-12">
+        {user ? <Marketplace /> : <LandingPage />}
       </div>
     </div>
   );
