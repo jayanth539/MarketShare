@@ -101,33 +101,39 @@ export default function CreateListingForm() {
 
   async function onSubmit(data: ListingFormValues) {
     if (!user) {
-      toast({ title: 'You must be logged in to create a listing.', variant: 'destructive' });
-      return;
+        toast({ title: 'You must be logged in to create a listing.', variant: 'destructive' });
+        return;
     }
     
     setIsSubmitting(true);
+    console.log('Starting listing creation process...');
 
     try {
         const photoFile = data.photo;
         const filePath = `${user.uid}/${Date.now()}_${photoFile.name}`;
         
-        const { error: uploadError } = await supabase.storage
+        console.log('1. Preparing to upload photo to Supabase storage at path:', filePath);
+        const { data: uploadData, error: uploadError } = await supabase.storage
             .from('listings')
             .upload(filePath, photoFile);
         
         if (uploadError) {
-            throw uploadError;
+            // Re-throw the error to be caught by the outer catch block
+            throw new Error(`Supabase storage upload error: ${uploadError.message}`);
         }
+        console.log('2. Photo uploaded successfully:', uploadData);
 
+        console.log('3. Getting public URL for:', filePath);
         const { data: publicUrlData } = supabase.storage
             .from('listings')
             .getPublicUrl(filePath);
 
-        if (!publicUrlData) {
+        if (!publicUrlData?.publicUrl) {
             throw new Error("Could not get public URL for the uploaded image.");
         }
         
         const imageUrl = publicUrlData.publicUrl;
+        console.log('4. Public URL obtained:', imageUrl);
 
         const newProduct = {
             title: data.title,
@@ -144,15 +150,17 @@ export default function CreateListingForm() {
             },
         };
 
-        const { data: insertedData, error } = await supabase
+        console.log('5. Preparing to insert new product into Supabase:', newProduct);
+        const { data: insertedData, error: insertError } = await supabase
             .from('products')
             .insert([newProduct])
             .select()
             .single();
 
-        if (error) {
-          throw error;
+        if (insertError) {
+          throw new Error(`Supabase insert error: ${insertError.message}`);
         }
+        console.log('6. Product inserted successfully:', insertedData);
 
         toast({
             title: 'Listing Created!',
@@ -161,11 +169,15 @@ export default function CreateListingForm() {
         
         router.push(`/listings/${insertedData.id}`);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        let errorMessage = 'An unknown error occurred. Please check the console.';
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        }
         console.error("Error creating listing: ", error);
         toast({ 
-          title: 'Error creating listing', 
-          description: error.message || 'An unknown error occurred. Please check the console.', 
+          title: 'Error Creating Listing', 
+          description: errorMessage,
           variant: 'destructive' 
         });
     } finally {
@@ -345,5 +357,3 @@ export default function CreateListingForm() {
     </Card>
   );
 }
-
-    
