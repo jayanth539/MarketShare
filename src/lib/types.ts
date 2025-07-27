@@ -1,12 +1,12 @@
-import { FieldValue } from "firebase/firestore";
-
 export type Review = {
-  userId: string;
+  id: string;
+  product_id: string;
+  user_id: string;
   user: string;
   avatar: string;
   rating: number;
   comment: string;
-  createdAt: FieldValue | Date;
+  created_at: string;
 };
 
 export type Product = {
@@ -23,8 +23,7 @@ export type Product = {
     name: string;
     avatar: string;
   };
-  reviews: Review[];
-  createdAt: FieldValue;
+  created_at: string;
 };
 
 export const categories: (Product['category'])[] = ['Electronics', 'Vehicles', 'Furniture', 'Appliances', 'Real Estate'];

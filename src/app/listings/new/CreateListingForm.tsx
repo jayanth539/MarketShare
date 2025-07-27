@@ -19,9 +19,8 @@ import { Loader2, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { categories } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
-import type { Product } from '@/lib/types';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
+import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const listingSchema = z.object({
@@ -118,12 +117,12 @@ export default function CreateListingForm() {
 
         const imageUrl = await getDownloadURL(storageRef);
 
-        const newProduct: Omit<Product, 'id' | 'reviews'> = {
+        const newProduct = {
             title: data.title,
             description: data.description,
             price: data.price,
-            imageUrl: imageUrl,
-            category: data.category as Product['category'],
+            image_url: imageUrl,
+            category: data.category,
             type: data.type,
             condition: data.condition,
             seller: { 
@@ -131,17 +130,24 @@ export default function CreateListingForm() {
                 name: user.displayName || 'Anonymous', 
                 avatar: user.photoURL || 'https://placehold.co/100x100.png' 
             },
-            createdAt: serverTimestamp(),
         };
 
-        const docRef = await addDoc(collection(db, 'products'), newProduct);
+        const { data: insertedData, error } = await supabase
+            .from('products')
+            .insert([newProduct])
+            .select()
+            .single();
+
+        if (error) {
+          throw error;
+        }
 
         toast({
             title: 'Listing Created!',
             description: 'Your item is now live on the marketplace.',
         });
         
-        router.push(`/listings/${docRef.id}`);
+        router.push(`/listings/${insertedData.id}`);
 
     } catch (error: any) {
         console.error("Error creating listing: ", error);
@@ -327,5 +333,3 @@ export default function CreateListingForm() {
     </Card>
   );
 }
-
-    

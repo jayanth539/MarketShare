@@ -8,8 +8,7 @@ import { Search, X } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
 import { categories } from '@/lib/types';
 import type { Product } from '@/lib/types';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -26,11 +25,17 @@ export default function Home() {
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
-      const productsCollection = collection(db, 'products');
-      const productSnapshot = await getDocs(productsCollection);
-      const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-      setAllProducts(productList);
-      setFilteredProducts(productList);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching products:', error);
+      } else {
+        setAllProducts(data as Product[]);
+        setFilteredProducts(data as Product[]);
+      }
       setLoading(false);
     };
     fetchProducts();

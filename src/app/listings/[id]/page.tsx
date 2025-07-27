@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { notFound, useParams } from 'next/navigation';
-import { doc, getDoc, collection, addDoc, getDocs, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -35,21 +34,34 @@ export default function ListingDetailPage() {
     if (typeof id !== 'string') return;
     const fetchProductAndReviews = async () => {
       setLoading(true);
-      const productRef = doc(db, 'products', id);
-      const productSnap = await getDoc(productRef);
+      
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-      if (productSnap.exists()) {
-        const productData = { id: productSnap.id, ...productSnap.data() } as Product;
-        setProduct(productData);
-        setListingType(productData.type);
-      } else {
+      if (productError || !productData) {
+        console.error('Error fetching product:', productError);
         notFound();
+        return;
       }
+      
+      setProduct(productData as Product);
+      setListingType(productData.type);
 
-      const reviewsRef = collection(db, 'products', id, 'reviews');
-      const q = query(reviewsRef, orderBy('createdAt', 'desc'));
-      const reviewsSnap = await getDocs(q);
-      setReviews(reviewsSnap.docs.map(doc => doc.data() as Review));
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('product_id', id)
+        .order('created_at', { ascending: false });
+
+      if (reviewsError) {
+        console.error('Error fetching reviews:', reviewsError);
+      } else {
+        setReviews(reviewsData as Review[]);
+      }
+      
       setLoading(false);
     };
 
@@ -71,21 +83,27 @@ export default function ListingDetailPage() {
         return;
     }
 
-    const reviewRef = collection(db, 'products', id, 'reviews');
-    const reviewData: Omit<Review, 'createdAt'> = {
+    const reviewData = {
+        product_id: id,
+        user_id: user.uid,
         user: user.displayName || 'Anonymous',
         avatar: user.photoURL || 'https://placehold.co/100x100.png',
         rating,
         comment: newReview,
-        userId: user.uid,
     };
     
-    await addDoc(reviewRef, {
-        ...reviewData,
-        createdAt: serverTimestamp()
-    });
+    const { data, error } = await supabase
+        .from('reviews')
+        .insert([reviewData])
+        .select();
 
-    setReviews(prev => [{ ...reviewData, createdAt: new Date() } as Review, ...prev]);
+    if (error) {
+        console.error('Error submitting review', error);
+        toast({ title: "Failed to submit review.", variant: 'destructive'});
+        return;
+    }
+
+    setReviews(prev => [data[0] as Review, ...prev]);
     setNewReview('');
     setRating(0);
     toast({ title: "Review submitted!"});
