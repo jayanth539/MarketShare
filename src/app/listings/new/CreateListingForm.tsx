@@ -20,8 +20,6 @@ import Image from 'next/image';
 import { categories } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const listingSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters.'),
@@ -111,11 +109,25 @@ export default function CreateListingForm() {
 
     try {
         const photoFile = data.photo;
-        const storageRef = ref(storage, `listings/${user.uid}/${Date.now()}_${photoFile.name}`);
+        const filePath = `${user.uid}/${Date.now()}_${photoFile.name}`;
         
-        await uploadBytes(storageRef, photoFile);
+        const { error: uploadError } = await supabase.storage
+            .from('listings')
+            .upload(filePath, photoFile);
+        
+        if (uploadError) {
+            throw uploadError;
+        }
 
-        const imageUrl = await getDownloadURL(storageRef);
+        const { data: publicUrlData } = supabase.storage
+            .from('listings')
+            .getPublicUrl(filePath);
+
+        if (!publicUrlData) {
+            throw new Error("Could not get public URL for the uploaded image.");
+        }
+        
+        const imageUrl = publicUrlData.publicUrl;
 
         const newProduct = {
             title: data.title,
@@ -333,3 +345,5 @@ export default function CreateListingForm() {
     </Card>
   );
 }
+
+    

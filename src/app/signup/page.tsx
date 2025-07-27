@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -10,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Chrome } from 'lucide-react';
-import { createUserWithEmailAndPassword, updateProfile, User } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
@@ -152,3 +153,5 @@ export default function SignupPage() {
     </div>
   );
 }
+
+    
