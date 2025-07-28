@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 function Marketplace() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -23,26 +24,30 @@ function Marketplace() {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching products:', error);
-      } else {
-        setAllProducts(data as Product[]);
-        setFilteredProducts(data as Product[]);
-      }
-      setLoading(false);
-    };
     fetchProducts();
   }, []);
 
+  const fetchProducts = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching products:', error);
+      toast({ title: 'Error fetching products', description: error.message, variant: 'destructive' });
+    } else {
+      setAllProducts(data as Product[]);
+      setFilteredProducts(data as Product[]);
+    }
+    setLoading(false);
+  };
+  
   const handleSearch = () => {
     let newFilteredProducts = allProducts;
 
@@ -79,6 +84,39 @@ function Marketplace() {
     setMaxPrice('');
     setFilteredProducts(allProducts);
   }
+
+  const handleDelete = async (productId: string, imageUrl: string | null) => {
+    if (!user) return;
+    
+    // First, delete the database record
+    const { error: dbError } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', productId);
+
+    if (dbError) {
+      toast({ title: 'Error deleting listing', description: dbError.message, variant: 'destructive' });
+      return;
+    }
+
+    // Then, delete the image from storage if it exists
+    if (imageUrl) {
+        const path = new URL(imageUrl).pathname.split('/public/listings/')[1];
+        if (path) {
+            const { error: storageError } = await supabase.storage
+                .from('listings')
+                .remove([path]);
+            
+            if (storageError) {
+                console.error('Error deleting image from storage:', storageError);
+                toast({ title: 'Listing deleted, but failed to remove image', description: storageError.message, variant: 'destructive' });
+            }
+        }
+    }
+    
+    toast({ title: 'Listing deleted successfully!' });
+    fetchProducts(); // Refresh the listings
+  };
   
   return (
      <>
@@ -162,7 +200,12 @@ function Marketplace() {
         ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard 
+                key={product.id} 
+                product={product} 
+                isOwner={user?.uid === product.seller.id}
+                onDelete={() => handleDelete(product.id, product.image_url)}
+              />
             ))}
           </div>
         ) : (

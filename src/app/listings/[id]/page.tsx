@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { notFound, useParams } from 'next/navigation';
+import { notFound, useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
@@ -10,18 +10,31 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import RentalCalendar from '@/components/RentalCalendar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Star, MessageCircle } from 'lucide-react';
+import { Star, MessageCircle, Edit, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import type { Product, Review } from '@/lib/types';
+import Link from 'next/link';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export default function ListingDetailPage() {
   const params = useParams();
   const { id } = params;
   const { user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -109,6 +122,38 @@ export default function ListingDetailPage() {
     toast({ title: "Review submitted!"});
   }
 
+  const handleDelete = async () => {
+    if (!product || !user || user.uid !== product.seller.id) return;
+
+    const { error: dbError } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', product.id);
+
+    if (dbError) {
+        toast({ title: 'Error deleting listing', description: dbError.message, variant: 'destructive' });
+        return;
+    }
+
+    if (product.image_url) {
+        const path = new URL(product.image_url).pathname.split('/public/listings/')[1];
+         if (path) {
+            const { error: storageError } = await supabase.storage
+                .from('listings')
+                .remove([path]);
+            
+            if (storageError) {
+                console.error('Error deleting image from storage:', storageError);
+            }
+        }
+    }
+
+    toast({ title: 'Listing deleted successfully!' });
+    router.push('/');
+  }
+
+  const isOwner = user?.uid === product?.seller.id;
+
   if (loading || !product) {
     return <div className="container mx-auto px-4 py-12">Loading...</div>;
   }
@@ -128,6 +173,30 @@ export default function ListingDetailPage() {
         </div>
 
         <div>
+          {isOwner && (
+            <div className="flex justify-end gap-2 mb-2">
+                <Button asChild variant="outline">
+                    <Link href={`/listings/${product.id}/edit`}><Edit className="mr-2 h-4 w-4"/> Edit</Link>
+                </Button>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4"/> Delete</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete your listing.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+          )}
           <h1 className="text-4xl font-headline font-bold mb-2">{product.title}</h1>
           <div className="flex items-center gap-4 mb-4 text-muted-foreground">
             <span className="capitalize">{product.category}</span>
@@ -216,7 +285,7 @@ export default function ListingDetailPage() {
           )}
         </div>
         
-        {user && (
+        {user && !isOwner && (
           <Card className="mt-8">
             <CardHeader>
               <CardTitle>Leave a Review</CardTitle>
