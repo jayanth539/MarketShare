@@ -26,4 +26,17 @@ export type Product = {
   created_at: string;
 };
 
+export type Request = {
+  id: string;
+  product_id: string;
+  buyer_id: string;
+  buyer_name: string;
+  seller_id: string;
+  request_type: 'sale' | 'rent';
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  products: Product; // This will be populated by the join query
+};
+
+
 export const categories: (Product['category'])[] = ['Electronics', 'Vehicles', 'Furniture', 'Appliances', 'Real Estate'];

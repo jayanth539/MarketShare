@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { updateProfile } from 'firebase/auth';
-import { Loader2, Edit, Trash2 } from 'lucide-react';
+import { Loader2, Edit, Trash2, Check, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { Product } from '@/lib/types';
+import type { Product, Request as RequestType } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Badge } from '@/components/ui/badge';
 
 function MyListings() {
     const { user } = useAuth();
@@ -33,11 +34,7 @@ function MyListings() {
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
-    useEffect(() => {
-        fetchListings();
-    }, [user]);
-
-    const fetchListings = async () => {
+    const fetchListings = useCallback(async () => {
         if (!user) return;
         setLoading(true);
         try {
@@ -54,7 +51,11 @@ function MyListings() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user, toast]);
+
+    useEffect(() => {
+        fetchListings();
+    }, [fetchListings]);
 
     const handleDelete = async (productId: string, imageUrl: string | null) => {
         if (!user) return;
@@ -102,7 +103,7 @@ function MyListings() {
                         <Image src={listing.image_url!} alt={listing.title} width={100} height={100} className="rounded-md object-cover" />
                         <div className="flex-grow">
                             <h3 className="font-semibold text-lg">{listing.title}</h3>
-                            <p className="text-primary font-bold">${listing.price.toLocaleString()}</p>
+                            <p className="text-primary font-bold">₹{listing.price.toLocaleString()}</p>
                             <p className="text-sm text-muted-foreground">
                                 Listed on {format(new Date(listing.created_at), 'PPP')}
                             </p>
@@ -136,6 +137,101 @@ function MyListings() {
     )
 }
 
+function Requests() {
+  const { user } = useAuth();
+  const [requests, setRequests] = useState<RequestType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const fetchRequests = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('requests')
+        .select(`
+          *,
+          products (*)
+        `)
+        .or(`seller_id.eq.${user.uid},buyer_id.eq.${user.uid}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setRequests(data as any[]);
+    } catch (error: any) {
+      toast({ title: 'Failed to fetch requests', description: error.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }, [user, toast]);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
+
+  const handleUpdateRequestStatus = async (requestId: string, status: 'accepted' | 'rejected') => {
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .update({ status })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      toast({ title: `Request ${status}` });
+      fetchRequests();
+    } catch (error: any) {
+      toast({ title: 'Failed to update request', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center p-8"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>;
+  }
+
+  if (requests.length === 0) {
+    return <div className="text-center p-8 text-muted-foreground">You have no pending requests.</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {requests.map((request) => {
+        const isSeller = request.seller_id === user?.uid;
+        return (
+          <Card key={request.id}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                <Image src={request.products.image_url!} alt={request.products.title} width={80} height={80} className="rounded-md object-cover" />
+                <div className="flex-grow">
+                  <h3 className="font-semibold">{request.products.title}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {isSeller ? `Request from ${request.buyer_name}` : `Request to ${request.products.seller.name}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(request.created_at), 'PPP')}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                    <Badge variant={request.status === 'pending' ? 'secondary' : request.status === 'accepted' ? 'default' : 'destructive'} className='capitalize'>{request.status}</Badge>
+                    {isSeller && request.status === 'pending' && (
+                        <div className="flex gap-2 mt-2">
+                        <Button size="icon" className="h-8 w-8 bg-green-500 hover:bg-green-600" onClick={() => handleUpdateRequestStatus(request.id, 'accepted')}>
+                            <Check className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" className="h-8 w-8" variant="destructive" onClick={() => handleUpdateRequestStatus(request.id, 'rejected')}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                        </div>
+                    )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function ProfilePage() {
     const { user, loading } = useAuth();
@@ -181,9 +277,10 @@ export default function ProfilePage() {
         </div>
         
         <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="profile">Profile Details</TabsTrigger>
                 <TabsTrigger value="listings">My Listings</TabsTrigger>
+                <TabsTrigger value="requests">Requests</TabsTrigger>
             </TabsList>
             <TabsContent value="profile">
                 <Card>
@@ -220,6 +317,9 @@ export default function ProfilePage() {
             </TabsContent>
             <TabsContent value="listings">
                 <MyListings />
+            </TabsContent>
+            <TabsContent value="requests">
+                <Requests />
             </TabsContent>
         </Tabs>
       </div>

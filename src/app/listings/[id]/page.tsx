@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import RentalCalendar from '@/components/RentalCalendar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Star, MessageCircle, Edit, Trash2 } from 'lucide-react';
+import { Star, MessageCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,6 +42,7 @@ export default function ListingDetailPage() {
   const [newReview, setNewReview] = useState('');
   const [rating, setRating] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
   useEffect(() => {
     if (typeof id !== 'string') return;
@@ -152,6 +153,33 @@ export default function ListingDetailPage() {
     router.push('/');
   }
 
+  const handleRequestSubmit = async () => {
+    if (!user || !product) {
+      toast({ title: "You must be logged in to make a request.", variant: 'destructive' });
+      return;
+    }
+    setIsSubmittingRequest(true);
+    try {
+      const { data, error } = await supabase.from('requests').insert({
+        product_id: product.id,
+        buyer_id: user.uid,
+        buyer_name: user.displayName || 'Anonymous',
+        seller_id: product.seller.id,
+        request_type: listingType,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({ title: "Request Sent!", description: "The seller has been notified of your request." });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Could not send request.", variant: 'destructive' });
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  };
+
   const isOwner = user?.uid === product?.seller.id;
 
   if (loading || !product) {
@@ -203,7 +231,7 @@ export default function ListingDetailPage() {
             <span className="capitalize">&bull; {product.condition}</span>
           </div>
           <p className="text-3xl font-semibold text-primary mb-6">
-            ${product.price.toLocaleString()}
+            ₹{product.price.toLocaleString()}
             {listingType === 'rent' && <span className="text-base font-normal text-muted-foreground"> / day</span>}
           </p>
           <p className="text-lg leading-relaxed mb-8">{product.description}</p>
@@ -226,10 +254,16 @@ export default function ListingDetailPage() {
                 <div>
                   <h3 className="text-xl font-headline mb-4">Select Rental Dates</h3>
                   <RentalCalendar />
-                  <Button size="lg" className="w-full mt-4 bg-accent text-accent-foreground hover:bg-accent/90">Request to Book</Button>
+                  <Button size="lg" className="w-full mt-4 bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleRequestSubmit} disabled={isSubmittingRequest || isOwner}>
+                    {isSubmittingRequest && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                    {isOwner ? "This is your listing" : "Request to Book"}
+                  </Button>
                 </div>
               ) : (
-                <Button size="lg" className="w-full">Buy Now</Button>
+                <Button size="lg" className="w-full" onClick={handleRequestSubmit} disabled={isSubmittingRequest || isOwner}>
+                    {isSubmittingRequest && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                    {isOwner ? "This is your listing" : "Buy Now"}
+                </Button>
               )}
             </CardContent>
           </Card>

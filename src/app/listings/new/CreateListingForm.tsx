@@ -169,10 +169,12 @@ export default function CreateListingForm() {
         
         router.push(`/listings/${insertedData.id}`);
 
-    } catch (error: unknown) {
+    } catch (error: any) {
         let errorMessage = 'An unknown error occurred. Please check the console.';
         if (error instanceof Error) {
             errorMessage = error.message;
+        } else if (typeof error === 'object' && error !== null && 'message' in error) {
+            errorMessage = (error as {message: string}).message;
         }
         console.error("Error creating listing: ", error);
         toast({ 
@@ -276,7 +278,7 @@ export default function CreateListingForm() {
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price ($)</FormLabel>
+                    <FormLabel>Price (₹)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="e.g., 450.00" {...field} value={field.value ?? ''} />
                     </FormControl>

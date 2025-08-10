@@ -88,7 +88,7 @@ export default function ProductCard({ product, isOwner, onDelete }: ProductCardP
       </Link>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
         <p className="text-xl font-semibold text-primary">
-            ${product.price.toLocaleString()}
+            ₹{product.price.toLocaleString()}
             {product.type === 'rent' && <span className="text-sm font-normal text-muted-foreground">/day</span>}
         </p>
         {isOwner && manageMenu}

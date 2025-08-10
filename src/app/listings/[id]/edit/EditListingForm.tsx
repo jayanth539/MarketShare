@@ -198,7 +198,7 @@ export default function EditListingForm() {
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price ($)</FormLabel>
+                    <FormLabel>Price (₹)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="e.g., 450.00" {...field} value={field.value ?? ''} />
                     </FormControl>
