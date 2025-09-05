@@ -4,7 +4,7 @@ This is a feature-rich marketplace application built with a modern tech stack. I
 
 ## Live Demo
 
-[Provide a link to your Vercel deployment here]
+https://market-share-phi.vercel.app/
 
 ## Features
 
